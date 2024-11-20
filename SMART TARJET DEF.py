@@ -1,3 +1,10 @@
+# problema:congestion o demora al pagar en lugares(mercados,restaurantes,centros comerciales)
+# lenguaje:python
+# planificacion:Agilizar o facilitar el proceso de pago en locaels que circulan muchos clientes.
+#como doncicional no puede tener saldo negativo o menor a 0,para comprobar el gap
+#matrices utlilice para los dias de la semana 
+#como metodo de ordenamiento utilice comb sort.
+
 import json
 import os
 import tkinter as tk
