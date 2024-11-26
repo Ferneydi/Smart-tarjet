@@ -11,186 +11,175 @@ import tkinter as tk
 from tkinter import messagebox
 from tkcalendar import Calendar  # Importar el calendario
 
-# Función para cargar los datos desde un archivo JSON
-def cargar_datos(archivo):
-    if os.path.exists(archivo):
-        with open(archivo, 'r') as f:
-            return json.load(f)
-    else:
-        return {}
+class GestionGastos:
+    def _init_(self):
+        # Variables principales
+        self.archivo = "gastos.json"
+        self.datos = self.cargar_datos()
+        self.ventana = tk.Tk()
+        self.ventana.title("Gestión de Gastos")
 
-# Función para guardar los datos en un archivo JSON
-def guardar_datos(archivo, datos):
-    with open(archivo, 'w') as f:
-        json.dump(datos, f, indent=4)
+        # Construcción de la interfaz gráfica
+        self.construir_interfaz()
 
-# Función para agregar un gasto
-def agregar_gasto():
-    dia = dia_entry.get()
-    mes = mes_entry.get()
-    año = año_entry.get()
-    
-    try:
-        gasto = float(gasto_entry.get())
-        if dia and mes and año:
-            # Crear la fecha completa en formato año-mes-día
-            fecha = f"{año}-{mes}-{dia}"
-            if fecha not in datos:
-                datos[fecha] = gasto
+        # Actualizar la lista al iniciar
+        self.actualizar_lista()
+
+        # Iniciar la ventana principal
+        self.ventana.mainloop()
+
+    # Función para cargar los datos desde un archivo JSON
+    def cargar_datos(self):
+        if os.path.exists(self.archivo):
+            with open(self.archivo, 'r') as f:
+                return json.load(f)
+        else:
+            return {}
+
+    # Función para guardar los datos en un archivo JSON
+    def guardar_datos(self):
+        with open(self.archivo, 'w') as f:
+            json.dump(self.datos, f, indent=4)
+
+    # Función para agregar un gasto
+    def agregar_gasto(self):
+        dia = self.dia_entry.get()
+        mes = self.mes_entry.get()
+        año = self.año_entry.get()
+
+        try:
+            gasto = float(self.gasto_entry.get())
+            if dia and mes and año:
+                # Crear la fecha completa en formato año-mes-día
+                fecha = f"{año}-{mes}-{dia}"
+                if fecha not in self.datos:
+                    self.datos[fecha] = gasto
+                else:
+                    messagebox.showwarning("Gasto Existente", f"Ya existe un gasto registrado para {fecha}.")
+                self.guardar_datos()
+                messagebox.showinfo("Éxito", f"Gasto de {gasto} pesos agregado en {fecha}.")
+                self.actualizar_lista()
+                # Limpiar los campos después de agregar el gasto
+                self.dia_entry.delete(0, tk.END)
+                self.mes_entry.delete(0, tk.END)
+                self.año_entry.delete(0, tk.END)
+                self.gasto_entry.delete(0, tk.END)
             else:
-                messagebox.showwarning("Gasto Existente", f"Ya existe un gasto registrado para {fecha}.")
-            guardar_datos(archivo, datos)
-            messagebox.showinfo("Éxito", f"Gasto de {gasto} pesos agregado en {fecha}.")
-            actualizar_lista()
-            # Limpiar los campos después de agregar el gasto
-            dia_entry.delete(0, tk.END)
-            mes_entry.delete(0, tk.END)
-            año_entry.delete(0, tk.END)
-            gasto_entry.delete(0, tk.END)
+                messagebox.showwarning("Entrada inválida", "Debe ingresar día, mes y año.")
+        except ValueError:
+            messagebox.showwarning("Entrada inválida", "El gasto debe ser un número.")
+
+    # Función para eliminar un gasto desde el listado
+    def eliminar_gasto_desde_lista(self):
+        seleccion = self.lista_gastos.curselection()  # Obtener el índice seleccionado en la lista
+        if seleccion:
+            item_seleccionado = self.lista_gastos.get(seleccion[0])
+            # Extraer fecha y gasto del ítem seleccionado
+            fecha, gasto = item_seleccionado.split(": ")
+            # Eliminar el gasto correspondiente
+            if fecha in self.datos:
+                del self.datos[fecha]
+                self.guardar_datos()
+                messagebox.showinfo("Éxito", f"Gasto de {gasto} pesos eliminado en {fecha}.")
+                self.actualizar_lista()
+            else:
+                messagebox.showwarning("Error", "No se pudo eliminar el gasto seleccionado.")
         else:
-            messagebox.showwarning("Entrada inválida", "Debe ingresar día, mes y año.")
-    except ValueError:
-        messagebox.showwarning("Entrada inválida", "El gasto debe ser un número.")
+            messagebox.showwarning("Selección inválida", "Debe seleccionar un gasto de la lista.")
 
-# Función para eliminar un gasto desde el listado
-def eliminar_gasto_desde_lista():
-    seleccion = lista_gastos.curselection()  # Obtener el índice seleccionado en la lista
-    if seleccion:
-        item_seleccionado = lista_gastos.get(seleccion[0])
-        # Extraer fecha y gasto del ítem seleccionado
-        fecha, gasto = item_seleccionado.split(": ")
-        # Eliminar el gasto correspondiente
-        if fecha in datos:
-            del datos[fecha]
-            guardar_datos(archivo, datos)
-            messagebox.showinfo("Éxito", f"Gasto de {gasto} pesos eliminado en {fecha}.")
-            actualizar_lista()
+    # Función para mostrar los totales de los gastos
+    def mostrar_totales(self):
+        self.total_text.delete(1.0, tk.END)  # Limpiar el área de texto
+        for fecha, gasto in self.datos.items():
+            self.total_text.insert(tk.END, f"{fecha}: {gasto} pesos\n")
+
+    # Función para actualizar la lista de gastos
+    def actualizar_lista(self):
+        self.lista_gastos.delete(0, tk.END)  # Limpiar la lista
+        for fecha, gasto in self.datos.items():
+            self.lista_gastos.insert(tk.END, f"{fecha}: {gasto} pesos")
+
+    # Función para buscar un gasto filtrando por fecha
+    def buscar_gasto(self):
+        dia = self.dia_busqueda_entry.get()
+        mes = self.mes_busqueda_entry.get()
+        año = self.año_busqueda_entry.get()
+
+        # Filtrar por día, mes y año
+        resultado = []
+        for fecha, gasto in self.datos.items():
+            año_f, mes_f, dia_f = fecha.split('-')
+            if (año == '' or año == año_f) and (mes == '' or mes == mes_f) and (dia == '' or dia == dia_f):
+                resultado.append(f"{fecha}: {gasto} pesos")
+
+        if resultado:
+            self.resultado_text.delete(1.0, tk.END)
+            self.resultado_text.insert(tk.END, "\n".join(resultado))
         else:
-            messagebox.showwarning("Error", "No se pudo eliminar el gasto seleccionado.")
-    else:
-        messagebox.showwarning("Selección inválida", "Debe seleccionar un gasto de la lista.")
+            messagebox.showinfo("Sin resultados", "No se encontraron gastos con los filtros seleccionados.")
 
-# Función para mostrar los totales de los gastos
-def mostrar_totales():
-    total_text.delete(1.0, tk.END)  # Limpiar el área de texto
-    for fecha, gasto in datos.items():
-        total_text.insert(tk.END, f"{fecha}: {gasto} pesos\n")
+    # Función para encontrar el mes con mayor gasto
+    def mes_con_mayor_gasto(self):
+        if not self.datos:
+            messagebox.showinfo("Sin datos", "No hay gastos registrados.")
+            return
 
-# Función para actualizar la lista de gastos
-def actualizar_lista():
-    lista_gastos.delete(0, tk.END)  # Limpiar la lista
-    for fecha, gasto in datos.items():
-        lista_gastos.insert(tk.END, f"{fecha}: {gasto} pesos")
+        gastos_por_mes = {}
+        for fecha, gasto in self.datos.items():
+            año, mes, _ = fecha.split('-')
+            clave_mes = f"{año}-{mes}"  # Clave para identificar un mes específico
+            gastos_por_mes[clave_mes] = gastos_por_mes.get(clave_mes, 0) + gasto
 
-# Función para buscar un gasto filtrando por fecha
-def buscar_gasto():
-    dia = dia_busqueda_entry.get()
-    mes = mes_busqueda_entry.get()
-    año = año_busqueda_entry.get()
-    
-    # Filtrar por día, mes y año
-    resultado = []
-    for fecha, gasto in datos.items():
-        año_f, mes_f, dia_f = fecha.split('-')
-        if (año == '' or año == año_f) and (mes == '' or mes == mes_f) and (dia == '' or dia == dia_f):
-            resultado.append(f"{fecha}: {gasto} pesos")
+        # Encontrar el mes con el mayor gasto
+        mes_max = max(gastos_por_mes, key=gastos_por_mes.get)
+        max_gasto = gastos_por_mes[mes_max]
 
-    if resultado:
-        resultado_text.delete(1.0, tk.END)
-        resultado_text.insert(tk.END, "\n".join(resultado))
-    else:
-        messagebox.showinfo("Sin resultados", "No se encontraron gastos con los filtros seleccionados.")
+        messagebox.showinfo("Mes con mayor gasto", f"El mes con el mayor gasto es: {mes_max} con {max_gasto} pesos")
 
-# Función para encontrar el mes con mayor gasto
-def mes_con_mayor_gasto():
-    mes_max = ""
-    max_gasto = 0
-    for fecha, gasto in datos.items():
-        año, mes, _ = fecha.split('-')
-        total_mes = sum(gasto for fecha, gasto in datos.items() if fecha.startswith(f"{año}-{mes}"))
-        if total_mes > max_gasto:
-            max_gasto = total_mes
-            mes_max = mes
-    messagebox.showinfo("Mes con mayor gasto", f"El mes con el mayor gasto es: {mes_max} con {max_gasto} pesos")
+    # Función para actualizar los campos con la fecha seleccionada del calendario
+    def seleccionar_fecha(self):
+        fecha_seleccionada = self.calendario.get_date()  # Obtener la fecha seleccionada
+        dia, mes, año = fecha_seleccionada.split("/")  # Dividir la fecha en día, mes y año
+        self.dia_entry.delete(0, tk.END)
+        self.dia_entry.insert(0, dia)
+        self.mes_entry.delete(0, tk.END)
+        self.mes_entry.insert(0, mes)
+        self.año_entry.delete(0, tk.END)
+        self.año_entry.insert(0, año)
 
-# Función para actualizar los campos con la fecha seleccionada del calendario
-def seleccionar_fecha():
-    fecha_seleccionada = calendario.get_date()  # Obtener la fecha seleccionada
-    dia, mes, año = fecha_seleccionada.split("/")  # Dividir la fecha en día, mes y año
-    dia_entry.delete(0, tk.END)
-    dia_entry.insert(0, dia)
-    mes_entry.delete(0, tk.END)
-    mes_entry.insert(0, mes)
-    año_entry.delete(0, tk.END)
-    año_entry.insert(0, año)
+    def construir_interfaz(self):
+        # Etiquetas y campos de entrada para agregar un gasto
+        tk.Label(self.ventana, text="Día:").grid(row=0, column=0, padx=10, pady=5)
+        self.dia_entry = tk.Entry(self.ventana)
+        self.dia_entry.grid(row=0, column=1, padx=10, pady=5)
 
-# Interfaz gráfica con Tkinter
-archivo = "gastos.json"
-datos = cargar_datos(archivo)
+        tk.Label(self.ventana, text="Mes:").grid(row=1, column=0, padx=10, pady=5)
+        self.mes_entry = tk.Entry(self.ventana)
+        self.mes_entry.grid(row=1, column=1, padx=10, pady=5)
 
-# Crear la ventana principal
-ventana = tk.Tk()
-ventana.title("Gestión de Gastos")
+        tk.Label(self.ventana, text="Año:").grid(row=2, column=0, padx=10, pady=5)
+        self.año_entry = tk.Entry(self.ventana)
+        self.año_entry.grid(row=2, column=1, padx=10, pady=5)
 
-# Etiquetas y campos de entrada para agregar un gasto
-tk.Label(ventana, text="Día:").grid(row=0, column=0, padx=10, pady=5)
-dia_entry = tk.Entry(ventana)
-dia_entry.grid(row=0, column=1, padx=10, pady=5)
+        tk.Label(self.ventana, text="Gasto (Pesos):").grid(row=3, column=0, padx=10, pady=5)
+        self.gasto_entry = tk.Entry(self.ventana)
+        self.gasto_entry.grid(row=3, column=1, padx=10, pady=5)
 
-tk.Label(ventana, text="Mes:").grid(row=1, column=0, padx=10, pady=5)
-mes_entry = tk.Entry(ventana)
-mes_entry.grid(row=1, column=1, padx=10, pady=5)
+        # Calendario
+        tk.Label(self.ventana, text="Selecciona una fecha:").grid(row=4, column=0, columnspan=2, pady=5)
+        self.calendario = Calendar(self.ventana, selectmode="day", date_pattern="dd/mm/yyyy")
+        self.calendario.grid(row=5, column=0, columnspan=2, padx=10, pady=5)
 
-tk.Label(ventana, text="Año:").grid(row=2, column=0, padx=10, pady=5)
-año_entry = tk.Entry(ventana)
-año_entry.grid(row=2, column=1, padx=10, pady=5)
+        tk.Button(self.ventana, text="Seleccionar Fecha", command=self.seleccionar_fecha).grid(row=6, column=0, columnspan=2, pady=5)
+        tk.Button(self.ventana, text="Agregar Gasto", command=self.agregar_gasto).grid(row=7, column=0, padx=10, pady=5)
 
-tk.Label(ventana, text="Gasto (Pesos):").grid(row=3, column=0, padx=10, pady=5)
-gasto_entry = tk.Entry(ventana)
-gasto_entry.grid(row=3, column=1, padx=10, pady=5)
+        # Lista de gastos registrados
+        tk.Label(self.ventana, text="Lista de Gastos Registrados:").grid(row=9, column=0, columnspan=2, pady=5)
+        self.lista_gastos = tk.Listbox(self.ventana, height=10, width=40)
+        self.lista_gastos.grid(row=10, column=0, columnspan=2, padx=10, pady=5)
 
-# Calendario
-tk.Label(ventana, text="Selecciona una fecha:").grid(row=4, column=0, columnspan=2, pady=5)
-calendario = Calendar(ventana, selectmode="day", date_pattern="dd/mm/yyyy")
-calendario.grid(row=5, column=0, columnspan=2, padx=10, pady=5)
+        tk.Button(self.ventana, text="Eliminar Gasto Seleccionado", command=self.eliminar_gasto_desde_lista).grid(row=11, column=0, columnspan=2, pady=10)
+        tk.Button(self.ventana, text="Mes con Mayor Gasto", command=self.mes_con_mayor_gasto).grid(row=12, column=0, columnspan=2, pady=10)
 
-# Botón para actualizar los campos con la fecha seleccionada
-tk.Button(ventana, text="Seleccionar Fecha", command=seleccionar_fecha).grid(row=6, column=0, columnspan=2, pady=5)
-
-# Botones para agregar y mostrar totales
-tk.Button(ventana, text="Agregar Gasto", command=agregar_gasto).grid(row=7, column=0, padx=10, pady=5)
-tk.Button(ventana, text="Mostrar Totales", command=mostrar_totales).grid(row=8, column=0, padx=10, pady=5)
-tk.Button(ventana, text="Buscar Gasto", command=buscar_gasto).grid(row=8, column=1, padx=10, pady=5)
-tk.Button(ventana, text="Mes con Mayor Gasto", command=mes_con_mayor_gasto).grid(row=9, column=0, columnspan=2, pady=10)
-
-# Campos de búsqueda
-tk.Label(ventana, text="Buscar por Día:").grid(row=10, column=0, padx=10, pady=5)
-dia_busqueda_entry = tk.Entry(ventana)
-dia_busqueda_entry.grid(row=10, column=1, padx=10, pady=5)
-
-tk.Label(ventana, text="Buscar por Mes:").grid(row=11, column=0, padx=10, pady=5)
-mes_busqueda_entry = tk.Entry(ventana)
-mes_busqueda_entry.grid(row=11, column=1, padx=10, pady=5)
-
-tk.Label(ventana, text="Buscar por Año:").grid(row=12, column=0, padx=10, pady=5)
-año_busqueda_entry = tk.Entry(ventana)
-año_busqueda_entry.grid(row=12, column=1, padx=10, pady=5)
-
-# Listbox para mostrar los gastos registrados
-tk.Label(ventana, text="Lista de Gastos Registrados:").grid(row=13, column=0, columnspan=2, pady=5)
-lista_gastos = tk.Listbox(ventana, height=10, width=40)
-lista_gastos.grid(row=14, column=0, columnspan=2, padx=10, pady=5)
-
-# Botón para eliminar un gasto seleccionado de la lista
-tk.Button(ventana, text="Eliminar Gasto Seleccionado", command=eliminar_gasto_desde_lista).grid(row=15, column=0, columnspan=2, pady=10)
-
-# Área de texto para mostrar los resultados de búsqueda
-tk.Label(ventana, text="Resultados de la Búsqueda:").grid(row=16, column=0, columnspan=2, pady=5)
-resultado_text = tk.Text(ventana, height=10, width=40)
-resultado_text.grid(row=17, column=0, columnspan=2, padx=10, pady=5)
-
-# Actualizar la lista de gastos cuando la ventana se abre
-actualizar_lista()
-
-# Ejecutar la interfaz gráfica
-ventana.mainloop()
+# Ejecutar la aplicación
+GestionGastos()
